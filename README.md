@@ -24,7 +24,7 @@ Al enviar la información:
 ## 📦 Instalación
 
 ```bash
-git clone https://github.com/tu_usuario/tu_repo.git
+git clone https://github.com/CarlosChasi13/Orquestacion_Mulesoft
 cd frontend
 npm install
 npm run dev

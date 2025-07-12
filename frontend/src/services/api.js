@@ -1,5 +1,6 @@
-// Configuración de la API
-const API_BASE_URL = "http://localhost:8081/api" // Ajusta según tu configuración de MuleSoft
+// Configuración de la API usando variables de entorno
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081/api"
+const API_TIMEOUT = import.meta.env.VITE_API_TIMEOUT || 10000
 
 /**
  * Envía una reserva al orquestador de MuleSoft
@@ -11,6 +12,9 @@ const API_BASE_URL = "http://localhost:8081/api" // Ajusta según tu configuraci
  * @returns {Promise<Object>} Respuesta del servidor
  */
 export const submitBooking = async (bookingData) => {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT)
+
   try {
     const response = await fetch(`${API_BASE_URL}/reservas`, {
       method: "POST",
@@ -19,7 +23,10 @@ export const submitBooking = async (bookingData) => {
         Accept: "application/json",
       },
       body: JSON.stringify(bookingData),
+      signal: controller.signal,
     })
+
+    clearTimeout(timeoutId)
 
     // Verificar si la respuesta es exitosa
     if (!response.ok) {
@@ -47,6 +54,13 @@ export const submitBooking = async (bookingData) => {
 
     return data
   } catch (error) {
+    clearTimeout(timeoutId)
+
+    // Manejar timeout
+    if (error.name === "AbortError") {
+      throw new Error("Tiempo de espera agotado. El servidor tardó demasiado en responder.")
+    }
+
     // Manejar errores de red o de conexión
     if (error.name === "TypeError" && error.message.includes("fetch")) {
       throw new Error("Error de conexión. Verifica que el servicio de MuleSoft esté disponible.")
@@ -76,21 +90,11 @@ export const checkServiceHealth = async () => {
   }
 }
 
-/**
- * Configuración para desarrollo local
- * Puedes cambiar estas URLs según tu entorno
- */
-export const API_CONFIG = {
-  development: "http://localhost:8081/api",
-  production: "https://tu-dominio-mulesoft.com/api",
-  staging: "https://staging-mulesoft.com/api",
-}
-
-// Función para cambiar la URL base según el entorno
-export const setApiBaseUrl = (environment = "development") => {
-  const newUrl = API_CONFIG[environment]
-  if (newUrl) {
-    // Aquí podrías implementar lógica para cambiar la URL base
-    console.log(`API Base URL configurada para ${environment}: ${newUrl}`)
+// Función para obtener la configuración actual
+export const getApiConfig = () => {
+  return {
+    baseUrl: API_BASE_URL,
+    timeout: API_TIMEOUT,
+    environment: import.meta.env.VITE_ENVIRONMENT || "development",
   }
 }
